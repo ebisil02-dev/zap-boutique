@@ -1,0 +1,31 @@
+# Boutique Zap : un seul « Worker » Cloudflare qui sert la boutique ET l'API, avec une base D1.
+# Le guide GUIDE-MISE-EN-LIGNE.md explique chaque ligne à modifier (elles sont marquées « À MODIFIER »).
+
+# À MODIFIER si vous le souhaitez : doit être identique au nom du projet créé dans le tableau de bord Cloudflare.
+name = "zap-boutique"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+
+# La boutique (dossier public/) est servie par Cloudflare ; toutes les requêtes passent d'abord par notre code,
+# ce qui permet d'ajouter les protections (en-têtes de sécurité) et d'exposer /api.
+[assets]
+directory = "./public/"
+binding = "ASSETS"
+run_worker_first = true
+
+# Base de données des commandes, produits et réglages.
+[[d1_databases]]
+binding = "DB"
+database_name = "zap-boutique"
+# Identifiant de la base « zap-boutique » (Cloudflare > Stockage et bases de données > D1). Déjà renseigné.
+database_id = "d071ae99-bcbd-4a2d-9e10-1de60199dde2"
+
+# Tâche automatique toutes les 10 minutes : annule les commandes « paiement en ligne » jamais payées
+# (le stock est remis) et vérifie les paiements restés en attente.
+[triggers]
+crons = ["*/10 * * * *"]
+
+# Réglages non secrets (facultatif). Les mots de passe et clés ne vont JAMAIS ici : voir le guide.
+[vars]
+# Fuseau : information seulement (le Cameroun est en UTC+1 toute l'année, géré dans le code).
+SHOP_TZ = "Africa/Douala"
