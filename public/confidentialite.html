@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Confidentialité</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B7A57">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<style>
+  :root { --bg:#EDF2EE; --card:#fff; --ink:#10261E; --ink-2:#4A5F56; --line:#D3DDD6; --accent:#0B7A57; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0E1A15; --card:#16241E; --ink:#E7F0EA; --ink-2:#A3B7AC; --line:#2B3E35; --accent:#4FCB9D; } }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-right, 0px)) max(40px, env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px)); }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  h1 { font: 700 30px/1.15 "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif; margin: 18px 0 6px; text-wrap: balance; }
+  h2 { font-size: 18px; margin: 28px 0 6px; text-wrap: balance; }
+  p, li { color: var(--ink-2); }
+  p { margin: 8px 0; }
+  ul { padding-left: 20px; margin: 8px 0; }
+  li { margin: 4px 0; }
+  b { color: var(--ink); }
+  .back { display: inline-block; padding: 8px 0; font-weight: 600; }
+  .upd { font-size: 14px; }
+  .box { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 4px 18px 14px; margin-top: 18px; }
+  .box h2:first-child { margin-top: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="/">← Retour à la boutique</a>
+  <h1>Vos données personnelles</h1>
+  <p class="upd">Ce que <b data-shop="name">la boutique</b> fait de vos informations quand vous commandez. Version simple, sans jargon.</p>
+
+  <div class="box">
+    <h2>Quelles informations sont enregistrées ?</h2>
+    <ul>
+      <li>Votre <b>nom</b> et votre <b>numéro de téléphone</b> (WhatsApp de préférence).</li>
+      <li>Pour une livraison : le <b>quartier</b> et les <b>précisions d’adresse</b> que vous écrivez.</li>
+      <li>Le contenu de votre commande, le jour et le créneau choisis, le moyen de paiement et le montant.</li>
+    </ul>
+    <p>Aucun mot de passe, aucun code secret et aucun numéro de carte ne passe par cette boutique.</p>
+
+    <h2>Pourquoi ?</h2>
+    <p>Uniquement pour <b>préparer, livrer et encaisser votre commande</b>, et vous contacter à son sujet (confirmation, retard, livraison) par WhatsApp ou par appel. Vos informations ne sont <b>ni vendues, ni utilisées pour de la publicité</b>.</p>
+
+    <h2>Qui y a accès ?</h2>
+    <ul>
+      <li><b data-shop="name">la boutique</b> : la personne qui gère les commandes.</li>
+      <li><b>Notch Pay</b>, si vous choisissez « Paiement en ligne » : votre nom, votre numéro et le montant lui sont transmis pour réaliser le paiement MTN MoMo ou Orange Money. Il a ses propres règles, consultables sur son site.</li>
+      <li>L’hébergeur technique de la boutique (<b>Cloudflare</b>), qui conserve les données sur ses serveurs, y compris hors du Cameroun.</li>
+    </ul>
+    <p>Les alertes envoyées au vendeur (Telegram ou téléphone) ne contiennent ni votre nom, ni votre numéro, ni votre adresse : seulement la référence, le total et le créneau.</p>
+
+    <h2>Combien de temps ?</h2>
+    <p>Le temps nécessaire au suivi des commandes et à la comptabilité de la boutique. Vous pouvez demander la suppression des informations d’une commande terminée.</p>
+
+    <h2>Vos droits</h2>
+    <p>Vous pouvez demander à <b data-shop="name">la boutique</b> de vous <b>montrer</b>, <b>corriger</b> ou <b>supprimer</b> vos informations, ou <b>retirer votre accord</b> à tout moment, en écrivant ou en appelant au <b data-shop="phone">numéro indiqué sur la boutique</b>.</p>
+
+    <h2>Sur votre appareil</h2>
+    <p>Pour vous éviter de tout ressaisir, la boutique garde dans votre navigateur votre nom, votre téléphone, votre panier et le lien de suivi de votre dernière commande. Cela reste sur votre appareil ; vider les données du site les efface. Aucun suivi publicitaire n’est utilisé.</p>
+  </div>
+</main>
+<script src="/legal.js"></script>
+</body>
+</html>

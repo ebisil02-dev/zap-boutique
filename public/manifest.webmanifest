@@ -1,0 +1,17 @@
+{
+  "name": "Grand Ma · Commande en ligne",
+  "short_name": "Grand Ma",
+  "description": "Commandez en ligne et choisissez votre créneau de livraison.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#EEF2EC",
+  "theme_color": "#0B7A57",
+  "lang": "fr",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [{ "name": "Espace vendeur", "short_name": "Vendeur", "url": "/#vendeur" }]
+}
