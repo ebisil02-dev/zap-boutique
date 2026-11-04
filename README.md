@@ -27,3 +27,4 @@ npx wrangler dev    # site local ; secrets locaux dans .dev.vars
 Faire évoluer la base : **ajouter** une liste à la fin de `MIGRATIONS` (`src/schema.js`), ne jamais modifier une liste déjà publiée.
 
 Les branches GitHub autres que `main` reçoivent une adresse d'aperçu **qui partage la base de données de production**.
+.
