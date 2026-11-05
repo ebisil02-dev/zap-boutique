@@ -3,8 +3,8 @@
    État, accès au serveur, vitrine et parcours client
    (les fonctions du cœur : prix, dates, créneaux… viennent de core.js, partagé avec le serveur)
    ========================================================= */
-let SHOP=canonShop({}),PRODUCTS=[];
-const D={products:{},orders:{},settings:{}};
+let SHOP=canonShop({}),PRODUCTS=[],VIDEOS=[];
+const D={products:{},orders:{},settings:{},videos:[]};
 const A={on:false,ready:false,rev:0,srv:{online:{},channels:{}},seen:null,inflight:0,err:'',sound:true};
 const S={view:'shop',cart:{},take:false,sent:null,sheet:null,dialog:null,filter:'open',busy:false,sending:false,loading:true,loadErr:'',
   C:{mode:'livraison',zone:'',addr:'',date:'',slot:'',name:'',phone:'',pay:'',paid:false,txn:'',ref:'',consent:false}};
@@ -23,7 +23,7 @@ async function api(method,path,body){
 
 async function loadShop(){
   const j=await api('GET','/api/shop');
-  setClock(j.now);SHOP=canonShop(j.shop);PRODUCTS=canonProducts(j.products);
+  setClock(j.now);SHOP=canonShop(j.shop);PRODUCTS=canonProducts(j.products);VIDEOS=canonVideos(j.videos);
   try{document.title=SHOP.name+' · Commande en ligne'}catch(e){}}
 
 const SH=()=>(S.take&&A.ready)?adminShop():SHOP;
@@ -78,6 +78,30 @@ function vbar(){
   return '<div class="vbar has"><div><span>Vous êtes connecté en vendeur</span><button data-a="go" data-v="orders">Espace vendeur</button></div></div>'}
 function lastOrderNote(){const l=store('zap.last');if(S.take||!l||!l.token||Date.now()-l.at>3*864e5)return '';
   return '<button class="note info" style="margin-top:12px" data-a="openLast">'+icon('receipt','sm')+'<span style="flex:1">Suivre ma commande <b>'+esc(l.ref)+'</b></span>'+icon('next','sm')+'</button>'}
+/* ---------- vidéos : cartes au toucher, le lecteur n'est chargé qu'à la demande (économise les données mobiles) ---------- */
+const VIDS=()=>S.take?[]:VIDEOS;
+const VP={from:null};
+function vcard(v){const k=VIDEO_KINDS[v.kind]||'Vidéo',t=v.title||('Vidéo '+k);
+  return '<button class="vcard" data-a="playVideo" data-id="'+esc(v.id)+'" aria-label="Regarder la vidéo : '+esc(t)+'"><span class="vthumb"><span class="vplaybtn">'+icon('play')+'</span><span class="vk">'+esc(k)+'</span></span><span class="vt">'+esc(t)+'</span></button>'}
+function videosSection(){const l=VIDS();if(!l.length)return '';
+  return '<section class="vids" id="videos" aria-label="Vidéos"><h2>Vidéos</h2><div class="vscroll">'+l.map(vcard).join('')+'</div></section>'}
+function openVideo(v,fromEl){
+  const e=videoEmbed(v);if(!e){toast('Cette vidéo ne peut pas être lue.');return}
+  closeVideo(true);
+  const k=VIDEO_KINDS[v.kind]||'Vidéo',title=v.title||('Vidéo '+k),tall=e.vertical?' tall':'';
+  const media=e.type==='video'
+    ?'<video class="vframe'+tall+'" src="'+esc(e.src)+'" controls autoplay playsinline preload="metadata"></video>'
+    :'<iframe class="vframe'+tall+'" src="'+esc(e.src)+'" title="'+esc(title)+'" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>';
+  const link=/^https:\/\//.test(v.url||'')?'<a class="vopen" href="'+esc(v.url)+'" target="_blank" rel="noopener noreferrer">La vidéo ne se lance pas ? Ouvrir sur '+esc(k)+'</a>':'';
+  const d=document.createElement('div');d.id='vplay';d.className='vplay';d.setAttribute('data-a','closeVideo');d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label',title);
+  d.innerHTML='<div class="vtitle">'+esc(title)+'</div><button class="vclose" data-a="closeVideo" aria-label="Fermer la vidéo">'+icon('x')+'</button>'+media+link;
+  document.body.appendChild(d);document.body.style.overflow='hidden';VP.from=fromEl||null;
+  const c=d.querySelector('.vclose');if(c)c.focus({preventScroll:true})}
+function closeVideo(silent){const d=document.getElementById('vplay');if(!d)return false;d.remove();
+  if(!silent){document.body.style.overflow=(document.querySelector('.sheet')||document.querySelector('.dialog'))?'hidden':'';
+    const f=VP.from;VP.from=null;if(f&&document.contains(f))f.focus({preventScroll:true})}
+  return true}
+
 function viewShop(){
   if(S.loading&&!S.take)return '<div class="app"><div class="stack" aria-busy="true" style="padding-top:28px"><div class="sk" style="height:30px;width:55%"></div><div class="sk" style="height:18px;width:80%"></div><div class="sk" style="height:150px"></div><div class="sk" style="height:150px"></div></div></div>';
   if(S.loadErr&&!S.take)return '<div class="app"><div class="empty" style="padding-top:60px">'+icon('info')+'<h3>La boutique ne répond pas</h3><p>'+esc(S.loadErr)+'</p><button class="btn" data-a="reload">Réessayer</button></div></div>';
@@ -87,9 +111,11 @@ function viewShop(){
   if(sh.pickup)facts.push('<span>'+icon('store','sm')+'Retrait possible</span>');
   if(sh.freeFrom)facts.push('<span>'+icon('check','sm')+'Livraison offerte dès '+money(sh.freeFrom)+'</span>');
   if(sh.minOrder)facts.push('<span>'+icon('bag','sm')+'Minimum '+money(sh.minOrder)+'</span>');
+  if(VIDS().length)facts.push('<button class="flink" data-a="toVideos">'+icon('play','sm')+'Vidéos ('+VIDS().length+')</button>');
   return vbar()+'<div class="app" style="padding-bottom:'+(cartCount()?'132px':'40px')+'"><header class="shop-h"><span class="kick">Commande en ligne</span><h1 tabindex="-1">'+esc(sh.name)+'</h1>'+
     (sh.about?'<p>'+esc(sh.about)+'</p>':'')+'<div><span class="pill '+(st.open?'brand':'plain')+'">'+esc(st.text)+'</span></div>'+(facts.length?'<div class="facts">'+facts.join('')+'</div>':'')+lastOrderNote()+'</header>'+
     (ps.length?'<section aria-label="Produits"><div class="pgrid">'+ps.map(pcard).join('')+'</div></section>':'<div class="empty">'+icon('bag')+'<h3>La boutique prépare ses produits</h3><p>Revenez dans un instant.</p></div>')+
+    videosSection()+
     (S.take?'':'<div class="legal"><a href="/confidentialite.html" target="_blank" rel="noopener">Confidentialité</a><a href="#vendeur">Espace vendeur</a></div>')+
     '</div><div id="cartbar">'+cartbar()+'</div>'}
 function refreshCart(id){

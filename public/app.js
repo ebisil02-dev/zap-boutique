@@ -10,7 +10,7 @@ const ICONS={lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 
   pin:'<path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
   copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',cash:'<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.8"/><path d="M6 12h.01M18 12h.01"/>',
   bag:'<path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M4 18l5-5 4 4 3-3 4 4"/>',
-  trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',down:'<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>'};
+  trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',down:'<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',play:'<path d="M8 5.5v13l11-6.5z"/>'};
 function mountSprite(){if($('#sprite'))return;const d=document.createElement('div');d.id='sprite';
   d.innerHTML='<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">'+Object.keys(ICONS).map(k=>'<symbol id="i-'+k+'" viewBox="0 0 24 24">'+ICONS[k]+'</symbol>').join('')+'</svg>';
   document.body.insertBefore(d,document.body.firstChild)}
@@ -44,7 +44,7 @@ function viewHTML(){
   const v=S.view;let h;
   switch(v){case 'ship':h=viewShip();break;case 'pay':h=viewPay();break;case 'done':h=viewDone();break;case 'login':h=viewLogin();break;
     case 'orders':h=A.on?viewOrders():viewLogin();break;case 'products':h=A.on?viewProducts():viewLogin();break;case 'settings':h=A.on?viewSettings():viewLogin();break;default:h=viewShop()}
-  let sh='';if(S.sheet&&A.on)sh=S.sheet.t==='order'?sheetOrder():S.sheet.t==='product'?sheetProduct():'';
+  let sh='';if(S.sheet&&A.on)sh=S.sheet.t==='order'?sheetOrder():S.sheet.t==='product'?sheetProduct():S.sheet.t==='video'?sheetVideo():'';
   return h+sh+dialogHTML()}
 let rT=0;
 function render(force){if(force)S.force=true;clearTimeout(rT);rT=setTimeout(doRender,0)}
@@ -59,7 +59,7 @@ function doRender(){
   if(S.reset){window.scrollTo(0,0);const h=$('h1[tabindex]');if(h)h.focus({preventScroll:true});S.reset=false}
   else{window.scrollTo(0,y);if(keep){const el=document.getElementById(keep);if(el&&el.tagName!=='BUTTON')el.focus({preventScroll:true})}}
   const dl=$('.dialog');if(dl&&!hadDlg){const b=dl.querySelector('button:last-child');if(b)b.focus()}
-  document.body.style.overflow=(ns||dl)?'hidden':''}
+  document.body.style.overflow=(ns||dl||$('#vplay'))?'hidden':''}
 document.addEventListener('focusout',()=>{if(S.pending)setTimeout(()=>{if(S.pending&&!editing())render(true)},80)});
 
 /* ---------- actions ---------- */
@@ -147,6 +147,23 @@ ACT.saveProduct=async()=>{const d=S.sheet.d,id=S.sheet.id;if(S.busy)return;if(St
   catch(e){S.busy=false;toast(e.message);render(true)}};
 ACT.toggleProd=el=>toggleProd(el.dataset.id);
 ACT.askDelProd=el=>{const id=el.dataset.id;confirmDlg('Supprimer ce produit ?','Il disparaît de la boutique tout de suite. Les commandes déjà passées gardent son nom.','Supprimer',()=>{S.sheet=null;delProd(id)})};
+/* ---------- vidéos ---------- */
+ACT.playVideo=el=>{const v=VIDS().find(x=>x.id===el.dataset.id);if(v)openVideo(v,el)};
+ACT.closeVideo=(el,e)=>{if(el.id==='vplay'&&e&&e.target!==el)return;closeVideo()};
+ACT.toVideos=()=>{const t=document.getElementById('videos');if(t)t.scrollIntoView({behavior:(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)?'auto':'smooth',block:'start'})};
+ACT.newVideo=()=>{S.sheet={t:'video',id:null,d:{url:'',title:''}};render(true)};
+ACT.editVideo=el=>{const v=(D.videos||[]).find(x=>x.id===el.dataset.id);if(!v)return;S.sheet={t:'video',id:v.id,d:{url:v.url||'',title:v.title||''}};render(true)};
+ACT.previewVideo=()=>{const v=(D.videos||[]).find(x=>x.id===S.sheet.id);if(v)openVideo(v)};
+ACT.saveVideo=async()=>{if(S.busy)return;const d=S.sheet.d,id=S.sheet.id;
+  if(!id){const p=parseVideo(d.url);if(!p.ok){toast(p.error||'Collez le lien de la vidéo.');return}}
+  S.busy=true;render(true);
+  try{await saveVid(id,{url:d.url,title:d.title});S.busy=false;S.sheet=null;toast(id?'Vidéo enregistrée.':'Vidéo ajoutée à la boutique.');render(true)}
+  catch(e){S.busy=false;toast(e.message);render(true)}};
+ACT.toggleVideo=el=>toggleVid(el.dataset.id);
+ACT.moveVideo=async el=>{if(S.busy||!S.sheet||!S.sheet.id)return;S.busy=true;
+  try{await moveVid(S.sheet.id,el.dataset.d)}catch(e){toast(e.message)}S.busy=false;render(true)};
+ACT.askDelVideo=el=>{const id=el.dataset.id;confirmDlg('Supprimer cette vidéo ?','Elle disparaît de la boutique tout de suite. La vidéo elle-même n’est pas supprimée de TikTok ou YouTube.','Supprimer',()=>{S.sheet=null;delVid(id)})};
+INP.vf=el=>{const k=el.dataset.k;S.sheet.d[k]=el.value;if(k==='url')syncVideoDetect()};
 ACT.swp=el=>{const p=el.dataset.p;editShop(s=>setPath(s,p,!getPath(s,p)))};
 ACT.addClosed=()=>{const v=$('#cl-date').value;if(!isISO(v)){toast('Choisissez une date.');return}editShop(s=>{s.closed.push(v)})};
 ACT.delClosed=el=>editShop(s=>{s.closed=s.closed.filter(x=>x!==el.dataset.id)});
@@ -184,7 +201,7 @@ document.addEventListener('click',e=>{const t=e.target.closest('[data-a]');if(!t
 document.addEventListener('submit',e=>{if(e.target.id==='loginform'){e.preventDefault();doLogin()}});
 document.addEventListener('input',e=>{const n=e.target.dataset&&e.target.dataset.i;if(n&&INP[n])INP[n](e.target)});
 document.addEventListener('change',e=>{const n=e.target.dataset&&e.target.dataset.i;if(n&&CHG[n])CHG[n](e.target)});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(S.dialog){S.dialog=null;render(true)}else if(S.sheet){S.sheet=null;render(true)}}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(closeVideo())return;if(S.dialog){S.dialog=null;render(true)}else if(S.sheet){S.sheet=null;render(true)}}});
 window.addEventListener('hashchange',applyHash);
 /* retour arrière depuis la page de paiement : on n’affiche pas un formulaire déjà envoyé (risque de commande en double) */
 window.addEventListener('pageshow',e=>{if(e.persisted&&S.redirecting){location.replace('/?o='+S.redirecting+'#merci')}});

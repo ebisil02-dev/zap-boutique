@@ -150,3 +150,87 @@ export function orderMessage(shop,o){
   L.push('Paiement : '+PAYN[p.method]+(p.method==='cash'?' à la '+(o.mode==='livraison'?'livraison':'remise'):p.method==='online'?(p.paid?', payé':', en cours'):(p.claimed||p.paid)?', déjà envoyé'+(p.txn?' (réf. '+p.txn+')':''):', à régler'));
   L.push('','Réf. '+o.ref);
   return L.join('\n')}
+
+/* ---------- vidéos : liens TikTok, YouTube, etc. ----------
+   Le vendeur colle un lien ; le serveur le reconnaît (parseVideo), ne garde que « plateforme + identifiant »
+   et le navigateur reconstruit lui-même l’adresse du lecteur (videoEmbed). Aucune adresse libre n’est jamais intégrée. */
+export const VIDEO_KINDS={tiktok:'TikTok',youtube:'YouTube',facebook:'Facebook',instagram:'Instagram',vimeo:'Vimeo',drive:'Google Drive',file:'Vidéo'};
+const REF_OK={
+  tiktok:/^\d{6,25}$/,
+  youtube:/^[A-Za-z0-9_-]{11}$/,
+  vimeo:/^\d{5,12}(\/[a-z0-9]{6,20})?$/i,
+  instagram:/^(reel|p|tv)\/[A-Za-z0-9_-]{5,20}$/,
+  drive:/^[A-Za-z0-9_-]{10,80}$/,
+  facebook:/^https:\/\/(www\.facebook\.com|fb\.watch)\/[^\s"'<>]{1,380}$/,
+  file:/^https:\/\/[^\s"'<>]{4,380}$/
+};
+export const videoRefOk=(kind,ref)=>!!(REF_OK[kind]&&REF_OK[kind].test(String(ref||'')));
+const FILE_EXT=/\.(mp4|webm|mov|m4v|ogv)$/i;
+const ERR_VIDEO='Ce lien n’est pas reconnu. Collez le lien d’une vidéo TikTok, YouTube, Facebook, Instagram, Vimeo, Google Drive, ou l’adresse directe d’un fichier .mp4.';
+/* extrait la première adresse d’un texte (lien seul, texte de partage « Regarde ça https://… », ou code d’intégration <iframe src="…">) */
+export function extractUrl(text){
+  const s=String(text||'');const m=/https?:\/\/[^\s"'<>\\]+/i.exec(s);
+  return m?m[0].replace(/[),.;!]+$/,''):'';
+}
+export function parseVideo(input){
+  const raw=extractUrl(input);
+  if(!raw){return String(input||'').trim()?{ok:false,error:'Le lien doit commencer par https:// (copiez-le depuis l’application ou le navigateur).'}:{ok:false,error:''}}
+  let u;try{u=new URL(raw)}catch(e){return{ok:false,error:ERR_VIDEO}}
+  if(u.protocol!=='https:')return{ok:false,error:'Le lien doit commencer par https:// et non http://.'};
+  if(u.username||u.password)return{ok:false,error:ERR_VIDEO};
+  const host=u.hostname.toLowerCase().replace(/^(www|m|web|mobile|music)\./,''),path=u.pathname.replace(/\/+$/,'');
+  const out=(kind,ref,extra={})=>videoRefOk(kind,ref)||extra.resolve?{ok:true,kind,ref:ref||'',url:u.href.slice(0,400),vertical:!!extra.vertical,resolve:!!extra.resolve}:{ok:false,error:ERR_VIDEO};
+  let m;
+  if(host==='tiktok.com'){
+    if((m=/^\/@[^/]+\/(?:video|photo)\/(\d{6,25})$/.exec(path))||(m=/^\/(?:embed(?:\/v2)?|player\/v1)\/(\d{6,25})$/.exec(path))||(m=/^\/v\/(\d{6,25})(?:\.html)?$/.exec(path)))return out('tiktok',m[1],{vertical:true});
+    if(/^\/t\/[A-Za-z0-9]{4,20}$/.test(path))return out('tiktok','',{vertical:true,resolve:true});
+    return{ok:false,error:'Lien TikTok incomplet : ouvrez la vidéo, touchez « Partager » puis « Copier le lien ».'};
+  }
+  if(host==='vm.tiktok.com'||host==='vt.tiktok.com'){if(/^\/[A-Za-z0-9]{4,20}$/.test(path))return out('tiktok','',{vertical:true,resolve:true});return{ok:false,error:ERR_VIDEO}}
+  if(host==='youtube.com'||host==='youtube-nocookie.com'){
+    if(path==='/watch'&&videoRefOk('youtube',u.searchParams.get('v')))return out('youtube',u.searchParams.get('v'));
+    if((m=/^\/shorts\/([A-Za-z0-9_-]{11})$/.exec(path)))return out('youtube',m[1],{vertical:true});
+    if((m=/^\/(?:embed|live|v)\/([A-Za-z0-9_-]{11})$/.exec(path)))return out('youtube',m[1]);
+    return{ok:false,error:'Lien YouTube incomplet : copiez l’adresse d’une vidéo précise (pas d’une chaîne).'};
+  }
+  if(host==='youtu.be'){if((m=/^\/([A-Za-z0-9_-]{11})$/.exec(path)))return out('youtube',m[1]);return{ok:false,error:ERR_VIDEO}}
+  if(host==='vimeo.com'||host==='player.vimeo.com'){
+    if((m=/^\/(?:video\/)?(\d{5,12})(?:\/([a-z0-9]{6,20}))?$/i.exec(path))){const h=m[2]||u.searchParams.get('h')||'';return out('vimeo',m[1]+(/^[a-z0-9]{6,20}$/i.test(h)?'/'+h:''))}
+    return{ok:false,error:ERR_VIDEO};
+  }
+  if(host==='instagram.com'){
+    if((m=/^\/(?:[^/]+\/)?(reel|reels|p|tv)\/([A-Za-z0-9_-]{5,20})$/.exec(path)))return out('instagram',(m[1]==='reels'?'reel':m[1])+'/'+m[2],{vertical:true});
+    return{ok:false,error:'Lien Instagram incomplet : ouvrez le reel ou la publication, touchez « ··· » puis « Copier le lien ».'};
+  }
+  if(host==='facebook.com'||host==='fb.watch'){
+    const q=u.searchParams.get('v');let ref='';
+    if(host==='fb.watch'&&/^\/[A-Za-z0-9_-]{4,30}$/.test(path))ref='https://fb.watch'+path+'/';
+    else if(host==='facebook.com'&&(/\/videos\/|\/reel\/|^\/share\/[vr]\//.test(path+'/')||(path==='/watch'&&/^\d{5,25}$/.test(q||'')))){
+      ref='https://www.facebook.com'+path+(path==='/watch'?'/?v='+q:'/');
+    }
+    if(ref)return out('facebook',ref,{vertical:/\/reel\/|^\/share\/r\//.test(path+'/')});
+    return{ok:false,error:'Lien Facebook non reconnu : ouvrez la vidéo sur Facebook et copiez son lien complet.'};
+  }
+  if(host==='drive.google.com'||host==='docs.google.com'){
+    if((m=/^\/file\/d\/([A-Za-z0-9_-]{10,80})(?:\/|$)/.exec(path))||((path==='/open'||path==='/uc')&&(m=[0,u.searchParams.get('id')||''])&&videoRefOk('drive',m[1])))return out('drive',m[1]);
+    return{ok:false,error:'Lien Google Drive non reconnu : dans Drive, clic droit sur la vidéo, « Partager », « Tout le monde ayant le lien », puis copiez le lien.'};
+  }
+  if(FILE_EXT.test(path))return out('file',u.origin+u.pathname+u.search);
+  return{ok:false,error:ERR_VIDEO};
+}
+/* ce que le navigateur affiche pour une vidéo : { type:'iframe'|'video', src, vertical } ou null si l’identifiant est invalide */
+export function videoEmbed(v){
+  if(!v||!videoRefOk(v.kind,v.ref))return null;const r=v.ref,vert=!!v.vertical;
+  switch(v.kind){
+    case 'tiktok':return{type:'iframe',src:'https://www.tiktok.com/player/v1/'+r+'?autoplay=1&rel=0&music_info=0&description=0',vertical:true};
+    case 'youtube':return{type:'iframe',src:'https://www.youtube-nocookie.com/embed/'+r+'?autoplay=1&rel=0&playsinline=1&modestbranding=1',vertical:vert};
+    case 'vimeo':{const p=r.split('/');return{type:'iframe',src:'https://player.vimeo.com/video/'+p[0]+'?autoplay=1&dnt=1'+(p[1]?'&h='+p[1]:''),vertical:false}}
+    case 'instagram':return{type:'iframe',src:'https://www.instagram.com/'+r+'/embed',vertical:true};
+    case 'drive':return{type:'iframe',src:'https://drive.google.com/file/d/'+r+'/preview',vertical:false};
+    case 'facebook':return{type:'iframe',src:'https://www.facebook.com/plugins/video.php?show_text=false&href='+encodeURIComponent(r),vertical:vert};
+    case 'file':return{type:'video',src:r,vertical:vert};
+  }
+  return null;
+}
+/* liste sûre de vidéos pour l’affichage (le serveur est la seule source, ceci ne sert qu’à ne jamais planter) */
+export const canonVideos=l=>(Array.isArray(l)?l:[]).filter(v=>v&&typeof v.id==='string'&&videoRefOk(v.kind,v.ref)).map(v=>({id:v.id,kind:v.kind,ref:v.ref,url:/^https:\/\//.test(v.url||'')?String(v.url).slice(0,400):'',title:norm(v.title).slice(0,80),vertical:!!v.vertical,on:v.on!==false}));

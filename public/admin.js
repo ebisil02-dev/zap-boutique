@@ -49,7 +49,7 @@ function updateTitle(){const n=A.on?orders().filter(isNew).length:0;
 async function loadAdmin(force){
   const j=await api('GET','/api/admin/state');
   if(A.inflight&&!force)return;
-  D.products=Object.fromEntries(j.products.map(p=>[p.id,p]));D.orders=Object.fromEntries(j.orders.map(o=>[o.id,o]));D.settings={main:j.settings};
+  D.products=Object.fromEntries(j.products.map(p=>[p.id,p]));D.orders=Object.fromEntries(j.orders.map(o=>[o.id,o]));D.settings={main:j.settings};D.videos=j.videos||[];syncPublicVideos();
   A.rev=j.rev;A.srv=j.server;
   const now=orders().filter(isNew),fresh=now.filter(o=>!(A.seen&&A.seen.has(o.id)));
   if(A.seen&&fresh.length)alertOrders(fresh);      // au premier chargement on mémorise sans alerter
@@ -157,6 +157,25 @@ function sheetOrder(){
     (foot?'<div class="foot"><div>'+foot+'</div></div>':'')+'</div>'}
 
 /* ---------- produits ---------- */
+/* ---------- vidéos (liens TikTok, YouTube, etc.) ---------- */
+const syncPublicVideos=()=>{VIDEOS=canonVideos((D.videos||[]).filter(v=>v.on!==false))};
+async function saveVid(id,payload){
+  if(id){await api('PATCH','/api/admin/videos/'+id,{title:payload.title})}
+  else{await api('POST','/api/admin/videos',{url:payload.url,title:payload.title})}
+  await loadAdmin(true)}
+function toggleVid(id){const v=(D.videos||[]).find(x=>x.id===id);if(!v)return;const on=!(v.on!==false);v.on=on;syncPublicVideos();render();
+  return enq('v:'+id,()=>api('PATCH','/api/admin/videos/'+id,{on}))}
+async function moveVid(id,dir){await api('PATCH','/api/admin/videos/'+id,{move:dir});await loadAdmin(true)}
+function delVid(id){D.videos=(D.videos||[]).filter(v=>v.id!==id);syncPublicVideos();render();return enq('v:'+id,()=>api('DELETE','/api/admin/videos/'+id))}
+/* ligne sous le champ « lien » : dit tout de suite si le lien est reconnu */
+function vidDetect(url){
+  const v=String(url||'').trim();if(!v)return '';
+  const p=parseVideo(v);
+  if(!p.ok)return '<div class="note bad" role="status">'+icon('info','sm')+'<span>'+esc(p.error)+'</span></div>';
+  if(p.resolve)return '<div class="note" role="status">'+icon('info','sm')+'<span>Lien court TikTok : il sera lu quand vous ajouterez la vidéo.</span></div>';
+  return '<div class="note ok" role="status">'+icon('check','sm')+'<span>Vidéo <b>'+esc(VIDEO_KINDS[p.kind])+'</b> reconnue.</span></div>'}
+function syncVideoDetect(){const el=document.getElementById('vdet');if(el&&S.sheet&&S.sheet.t==='video')el.innerHTML=vidDetect(S.sheet.d.url)}
+
 function viewProducts(){
   const ps=Object.values(D.products).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)||String(a.name).localeCompare(b.name,'fr'));
   const rows=ps.map(p=>{const im=safeImg(p.img),low=p.stock!=null&&+p.stock<=5;
@@ -164,7 +183,7 @@ function viewProducts(){
       '<div class="sub2">'+(p.stock==null?'Stock illimité':esc(p.stock)+' en stock')+'</div>'+(p.stock!=null&&+p.stock<=0?'<div class="pills">'+pill('danger','Épuisé')+'</div>':low?'<div class="pills">'+pill('signal','Stock bas')+'</div>':'')+'</div></button>'+
       '<button class="sw" role="switch" aria-checked="'+(p.on!==false)+'" aria-label="Visible dans la boutique : '+esc(p.name)+'" data-a="toggleProd" data-id="'+esc(p.id)+'"></button></div>'}).join('');
   return adminShell(head('Produits',{actions:'<button class="iconbtn" data-a="newProduct" aria-label="Ajouter un produit">'+icon('plus')+'</button>'})+
-    loadingOr('<div class="stack t">'+(ps.length?'<div class="group">'+rows+'</div><p class="muted small">L’interrupteur masque un produit de la boutique sans le supprimer. Le stock diminue tout seul à chaque commande et remonte si elle est annulée.</p>':empty('box','Aucun produit','Ajoutez votre premier produit avec son prix et une photo.','<button class="btn" data-a="newProduct">'+icon('plus','sm')+'Ajouter un produit</button>'))+'</div>'))}
+    loadingOr('<div class="stack tt">'+(ps.length?'<div class="group">'+rows+'</div><p class="muted small">L’interrupteur masque un produit de la boutique sans le supprimer. Le stock diminue tout seul à chaque commande et remonte si elle est annulée.</p>':empty('box','Aucun produit','Ajoutez votre premier produit avec son prix et une photo.','<button class="btn" data-a="newProduct">'+icon('plus','sm')+'Ajouter un produit</button>'))+videosPanel()+'</div>'))}
 function sheetProduct(){
   const d=S.sheet.d,im=safeImg(d.img),id=S.sheet.id;
   return '<div class="sheet" role="dialog" aria-modal="true" aria-label="Produit"><div class="sheet-in">'+head(id?'Modifier le produit':'Nouveau produit',{back:true})+
@@ -176,6 +195,27 @@ function sheetProduct(){
     '<div class="field"><label for="pd">Description courte</label><textarea id="pd" data-i="pf" data-k="desc" rows="3" maxlength="200" placeholder="Une ou deux phrases pour donner envie">'+esc(d.desc)+'</textarea></div>'+
     (id?'<button class="btn danger" data-a="askDelProd" data-id="'+esc(id)+'">Supprimer ce produit</button>':'')+'</div></div>'+
     '<div class="foot"><div><button class="btn" data-a="saveProduct"'+(S.busy?' disabled aria-disabled="true"':'')+'>'+(S.busy?'<span class="spin"></span>Enregistrement…':'Enregistrer')+'</button></div></div></div>'}
+function videosPanel(){
+  const vs=D.videos||[];
+  const rows=vs.map((v,i)=>{const k=VIDEO_KINDS[v.kind]||'Vidéo',on=v.on!==false;
+    return '<div class="row"><button class="rowmain" data-a="editVideo" data-id="'+esc(v.id)+'"><div class="thumb vth">'+icon('play')+'</div><div class="grow"><div class="t">'+esc(v.title||('Vidéo '+k))+'</div><div class="sub2">'+esc(k)+(on?'':' · masquée')+'</div></div></button>'+
+      '<button class="sw" role="switch" aria-checked="'+on+'" aria-label="Visible dans la boutique : '+esc(v.title||('Vidéo '+k))+'" data-a="toggleVideo" data-id="'+esc(v.id)+'"></button></div>'}).join('');
+  return '<div class="panel"><h2>Vidéos</h2><div class="muted">Vos clients les regardent depuis la boutique, sans la quitter. Collez le lien d’une vidéo TikTok, YouTube, Facebook, Instagram, Vimeo, Google Drive, ou l’adresse d’un fichier .mp4.</div>'+
+    (vs.length?'<div class="group">'+rows+'</div>':'')+
+    '<button class="btn soft" data-a="newVideo">'+icon('plus','sm')+'Ajouter une vidéo</button></div>'}
+function sheetVideo(){
+  const d=S.sheet.d,id=S.sheet.id,v=id?(D.videos||[]).find(x=>x.id===id):null,k=v?(VIDEO_KINDS[v.kind]||'Vidéo'):'';
+  const idx=v?(D.videos||[]).findIndex(x=>x.id===id):-1,last=(D.videos||[]).length-1;
+  return '<div class="sheet" role="dialog" aria-modal="true" aria-label="Vidéo"><div class="sheet-in">'+head(id?'Modifier la vidéo':'Nouvelle vidéo',{back:true})+
+    '<div class="stack">'+
+    (id?'<div class="field"><span class="lbl">Source</span><div class="copyline"><span class="pill brand plain">'+esc(k)+'</span><code>'+esc(v&&v.url||'')+'</code></div></div>'+
+        '<button class="btn soft" data-a="previewVideo">'+icon('play','sm')+'Voir la vidéo</button>'
+      :'<div class="field"><label for="vu">Lien de la vidéo</label><input id="vu" data-i="vf" data-k="url" value="'+esc(d.url)+'" placeholder="Collez ici le lien (TikTok, YouTube, Facebook…)" inputmode="url" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false">'+
+        '<span class="hint">Dans TikTok : ouvrez la vidéo, touchez « Partager », puis « Copier le lien ».</span></div><div id="vdet">'+vidDetect(d.url)+'</div>')+
+    '<div class="field"><label for="vt">Titre (facultatif)</label><input id="vt" data-i="vf" data-k="title" value="'+esc(d.title)+'" placeholder="Ex. : Comment préparer Grand Ma en 5 minutes" maxlength="80"></div>'+
+    (id?'<div class="two"><button class="btn line sm" data-a="moveVideo" data-d="up"'+(idx<=0||S.busy?' disabled aria-disabled="true"':'')+'>↑ Monter</button><button class="btn line sm" data-a="moveVideo" data-d="down"'+(idx<0||idx>=last||S.busy?' disabled aria-disabled="true"':'')+'>↓ Descendre</button></div>'+
+        '<button class="btn danger" data-a="askDelVideo" data-id="'+esc(id)+'">Supprimer cette vidéo</button>':'')+'</div></div>'+
+    '<div class="foot"><div><button class="btn" data-a="saveVideo"'+(S.busy?' disabled aria-disabled="true"':'')+'>'+(S.busy?'<span class="spin"></span>Enregistrement…':id?'Enregistrer':'Ajouter la vidéo')+'</button></div></div></div>'}
 async function resizeImage(file,max=640){
   const url=URL.createObjectURL(file);
   try{const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});

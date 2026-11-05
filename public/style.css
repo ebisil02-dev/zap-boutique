@@ -48,7 +48,7 @@ svg.i.sm{width:18px;height:18px}
 .top .sub{display:block;font:500 13px var(--font-body);color:var(--ink-2);letter-spacing:0;margin-top:3px}
 .stack,.sec,.kvl,.dialog,.fh{display:grid;grid-template-columns:minmax(0,1fr)}
 .stack{gap:18px}
-.stack.t{gap:12px}
+.stack.t,.stack.tt{gap:12px}
 .sec{gap:10px}
 .sec>h2,.sec-h h2{font:700 13px var(--font-body);color:var(--ink-2);letter-spacing:.02em}
 .sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
@@ -265,3 +265,26 @@ img{max-width:100%}
 .kv dt{color:var(--ink-2)} .kv dd{margin:0;overflow-wrap:anywhere}
 .copyline{display:flex;gap:8px;align-items:center}
 .copyline code{flex:1;min-width:0;overflow-wrap:anywhere;background:var(--surface-2);border-radius:8px;padding:8px 10px;font-size:12.5px}
+
+/* ---------- vidéos ---------- */
+.flink{display:inline-flex;gap:6px;align-items:center;font:inherit;font-size:13px;color:var(--brand-ink);font-weight:700;min-height:28px;text-decoration:underline;text-underline-offset:3px}
+.vids{display:grid;gap:10px;padding:28px 0 4px}
+.vids h2{font:700 20px var(--font-display)}
+.vscroll{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x proximity;padding:2px 2px 8px;margin-inline:-2px;scrollbar-width:none}
+.vscroll::-webkit-scrollbar{display:none}
+.vcard{flex:none;width:148px;display:grid;gap:8px;align-content:start;scroll-snap-align:start}
+.vthumb{position:relative;aspect-ratio:3/4;border-radius:16px;background:linear-gradient(160deg,var(--brand),var(--brand-ink));color:var(--on-brand);display:grid;place-items:center;overflow:hidden}
+.vplaybtn{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.22);background:color-mix(in srgb,var(--on-brand) 20%,transparent)}
+.vplaybtn svg{width:26px;height:26px;fill:currentColor;margin-left:3px}
+.vk{position:absolute;left:10px;bottom:10px;font:700 11px/1 var(--font-body);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:999px;background:rgba(0,0,0,.28);color:#fff}
+.vt{font-weight:600;font-size:14px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.5em;overflow-wrap:anywhere}
+.vplay{position:fixed;inset:0;z-index:60;background:#030806;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#fff;
+  padding:calc(60px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));animation:fade .15s}
+.vtitle{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));right:72px;line-height:44px;display:block;font-weight:700;font-size:15px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.vclose{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:max(10px,env(safe-area-inset-right,0px));width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;display:grid;place-items:center}
+.vframe{width:100%;max-width:720px;aspect-ratio:16/9;border:0;border-radius:14px;background:#000;display:block}
+.vframe.tall{flex:1 1 0;min-height:0;width:min(100%,400px);aspect-ratio:auto;max-height:800px}
+video.vframe{object-fit:contain}
+.vopen{color:rgba(255,255,255,.82);font-size:14px;text-align:center;text-underline-offset:3px;min-height:36px;display:inline-flex;align-items:center}
+.thumb.vth{background:var(--brand-soft);color:var(--brand-ink)}
+.thumb.vth svg{fill:currentColor}
