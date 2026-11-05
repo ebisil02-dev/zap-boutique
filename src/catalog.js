@@ -4,6 +4,7 @@ import { Fail, randId } from './util.js';
 import { getShop, saveShopStmt, listProducts, getProduct, commit, getRev, rowToOrder } from './db.js';
 import { payConfigured, payTest } from './pay.js';
 import { channels } from './notify.js';
+import { listVideos } from './videos.js';
 
 export async function saveSettings(env, body) {
   // garde-fou : un envoi vide ou tronqué ne doit jamais remettre la boutique à zéro
@@ -59,12 +60,12 @@ export async function productImage(env, id) {
 
 export async function adminState(env, origin) {
   const db = env.DB;
-  const [settings, products, rows, rev] = await Promise.all([
-    getShop(db), listProducts(db, { all: true }),
+  const [settings, products, videos, rows, rev] = await Promise.all([
+    getShop(db), listProducts(db, { all: true }), listVideos(db, { all: true }),
     db.prepare('SELECT * FROM orders ORDER BY created_at DESC LIMIT 300').all(), getRev(db)
   ]);
   return {
-    rev, settings, products, orders: rows.results.map(rowToOrder),
+    rev, settings, products, videos, orders: rows.results.map(rowToOrder),
     server: {
       online: { configured: payConfigured(env), test: payTest(env), webhookUrl: origin + '/api/notchpay/webhook', webhookSigned: !!env.NOTCHPAY_HASH },
       channels: channels(env)

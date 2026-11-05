@@ -7,8 +7,9 @@ import { createOrder, patchOrder, deleteOrder, retryPayment, switchToCash, apply
 import { saveSettings, createProduct, updateProduct, deleteProduct, productImage, adminState } from './catalog.js';
 import { payConfigured, payTest, fetchPayment, verifySignature, candidateIds } from './pay.js';
 import { channels, notify } from './notify.js';
+import { listVideos, publicVideos, addVideo, patchVideo, deleteVideo } from './videos.js';
 
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; media-src https:; frame-src https://www.tiktok.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.instagram.com https://www.facebook.com https://drive.google.com; connect-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
 function secure(res) {
   const h = new Headers(res.headers);
   h.set('content-security-policy', h.get('content-security-policy') || CSP);
@@ -30,9 +31,9 @@ route('GET', /^\/api\/health$/, async (request, env) => {
   return json(out, out.ok ? 200 : 500);
 });
 route('GET', /^\/api\/shop$/, async (request, env) => {
-  const [shop, products] = await Promise.all([getShop(env.DB), listProducts(env.DB)]);
+  const [shop, products, videos] = await Promise.all([getShop(env.DB), listProducts(env.DB), listVideos(env.DB)]);
   shop.online.on = shop.online.on && payConfigured(env);
-  return json({ shop, products: publicProducts(products), now: Date.now() });
+  return json({ shop, products: publicProducts(products), videos: publicVideos(videos), now: Date.now() });
 });
 route('GET', /^\/api\/img\/([A-Za-z0-9_-]{1,40})$/, (request, env, ctx, m) => productImage(env, m[1]));
 
@@ -100,6 +101,9 @@ route('PUT', /^\/api\/admin\/settings$/, async (request, env) => { await require
 route('POST', /^\/api\/admin\/products$/, async (request, env) => { await requireAdmin(request, env); return json({ ok: true, product: await createProduct(env, await readJson(request, 300000)) }, 201); });
 route('PUT', /^\/api\/admin\/products\/([A-Za-z0-9_-]{1,40})$/, async (request, env, ctx, m) => { await requireAdmin(request, env); return json({ ok: true, product: await updateProduct(env, m[1], await readJson(request, 300000)) }); });
 route('DELETE', /^\/api\/admin\/products\/([A-Za-z0-9_-]{1,40})$/, async (request, env, ctx, m) => { await requireAdmin(request, env); await deleteProduct(env, m[1]); return json({ ok: true }); });
+route('POST', /^\/api\/admin\/videos$/, async (request, env) => { await requireAdmin(request, env); return json({ ok: true, video: await addVideo(env, await readJson(request, 4000)) }, 201); });
+route('PATCH', /^\/api\/admin\/videos\/([A-Za-z0-9_-]{1,40})$/, async (request, env, ctx, m) => { await requireAdmin(request, env); return json({ ok: true, video: await patchVideo(env, m[1], await readJson(request, 2000)) }); });
+route('DELETE', /^\/api\/admin\/videos\/([A-Za-z0-9_-]{1,40})$/, async (request, env, ctx, m) => { await requireAdmin(request, env); await deleteVideo(env, m[1]); return json({ ok: true }); });
 route('POST', /^\/api\/admin\/orders$/, async (request, env, ctx) => {
   await requireAdmin(request, env);
   const r = await createOrder(env, ctx, await readJson(request), { admin: true, origin: originOf(request) });
